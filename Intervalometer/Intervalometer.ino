@@ -50,46 +50,55 @@ void adjustValue(boolean increment) {
   }
 }
 
+/*
+ * Triggers the wireless remote
+ * 0.2 seconds runtime
+ */
 void physticalTrigger() {
   digitalWrite(Trigger, HIGH);
   delay(200);
   digitalWrite(Trigger, LOW);
 }
 
+/*
+ * Triggers remote with necessary delays
+ */
 void trigger() {
   output = "Triggering";
   updateScreen();
   if (exposure == 0) {
-  //trigger 0.01 seconds
   physticalTrigger();
   } else {
-  //trigger 0.01 seconds
   physticalTrigger();
   delay(exposure * 1000);
-  //trigger 0.01 seconds
   physticalTrigger();
   }
 }
 
+/*
+ * Updates screen if output data isn't the same as previous frame
+ */
 void updateScreen() {
   if (!output.equals(lastFrame)) {
     u8g2.clearDisplay();
     lastFrame = output;
-  }
 
-  do {
-    //u8g2.setFont(u8g2_font_7x14_mf); //u8g2.setFont(u8g2_font_diodesemimono_tr);
-    u8g2.setCursor(10,24);
-    u8g2.print(output);
-  } while (u8g2.nextPage());
+    do {
+      //u8g2.setFont(u8g2_font_7x14_mf); //u8g2.setFont(u8g2_font_diodesemimono_tr);
+      u8g2.setCursor(10,24);
+      u8g2.print(output);
+    } while (u8g2.nextPage());
+  }
 }
 
+/*
+ * Function waits ~exactly a second after countdown 1 was set in main
+ */
 void sleepCycle() {
   countdownTimer2 = millis();
   while (countdownTimer2 - countdownTimer1 < 1000) {
     countdownTimer2 = millis();
   }
-  Serial.println(countdownTimer2 - countdownTimer1);
 }
 
 void isr ()  {
@@ -98,10 +107,10 @@ void isr ()  {
   if (interruptTime - lastInterruptTime > 5) {
     if (digitalRead(PinB) == LOW)
     {
-      virtualPosition-- ; // Could be -5 or -10
+      virtualPosition-- ;
     }
     else {
-      virtualPosition++ ; // Could be +5 or +10
+      virtualPosition++ ;
     }
   }
   lastInterruptTime = interruptTime;
