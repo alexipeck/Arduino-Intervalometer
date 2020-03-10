@@ -11,20 +11,23 @@ int lastCount = 50;
 volatile int virtualPosition = 50;
 short menuCurrent = 1;
 short interval = 15; //Default
-short exposure = 0; //Default
+short exposure = 0.0; //Default
 int countdown = 0;
 long countdownTimer1, countdownTimer2;
 boolean awake = true;
 boolean buttonActive = false;
 boolean longPressActive = false;
+boolean aLastState = false;
+boolean aState = false; //=false
 long buttonTimer = 0;
 long buttonTimer2 = 0;
 long longPressTime = 250;
 String output = "";
 String lastFrame = "";
 boolean startSleep = false;
+unsigned long interruptTime, lastInterruptTime;
 
-U8G2_SH1106_128X64_NONAME_1_4W_HW_SPI u8g2(U8G2_R2, /* cs=*/ 10, /* dc=*/ 9, /* reset=*/ 6);
+U8G2_SH1106_128X64_NONAME_1_4W_HW_SPI u8g2(U8G2_R2, /* cs=*/ 10, /* dc=*/ 9, /* reset=*/ 7);
 
 /*
  * Adjusts selected menu item based on increment/decrement parameter
@@ -52,7 +55,7 @@ void adjustValue(boolean increment) {
 
 /*
  * Triggers the wireless remote
- * 0.2 seconds runtime
+ * ~0.2 seconds runtime
  */
 void physticalTrigger() {
   digitalWrite(Trigger, HIGH);
@@ -66,12 +69,12 @@ void physticalTrigger() {
 void trigger() {
   output = "Triggering";
   updateScreen();
-  if (exposure == 0) {
-  physticalTrigger();
-  } else {
-  physticalTrigger();
-  delay(exposure * 1000);
-  physticalTrigger();
+  if (exposure == 0) {      
+    physticalTrigger();         //trigger 0.01 seconds
+  } else {                  
+    physticalTrigger();         //trigger 0.01 seconds
+    delay(exposure * 1000);  
+    physticalTrigger();           //trigger 0.01 seconds
   }
 }
 
@@ -101,19 +104,24 @@ void sleepCycle() {
   }
 }
 
-void isr ()  {
-  static unsigned long lastInterruptTime = 0;
-  unsigned long interruptTime = millis();
+void interrupt() {
+  lastInterruptTime = 0;
+  interruptTime = millis();
+  aState = digitalRead(PinA);
   if (interruptTime - lastInterruptTime > 5) {
-    if (digitalRead(PinB) == LOW)
+    if (digitalRead(PinB) != aState)
     {
-      virtualPosition-- ;
-    }
-    else {
       virtualPosition++ ;
+    } else {
+      virtualPosition-- ;
     }
   }
   lastInterruptTime = interruptTime;
+  aLastState = aState;
+}
+
+void isr ()  {
+  interrupt();
 }
 
 void setup() {
@@ -124,9 +132,9 @@ void setup() {
   pinMode(PinA, INPUT_PULLUP);
   pinMode(PinB, INPUT_PULLUP);
   pinMode(EncoderButton, INPUT_PULLUP);
-  pinMode (6, OUTPUT); //temp
   attachInterrupt(digitalPinToInterrupt(PinA), isr, LOW);
-
+  attachInterrupt(digitalPinToInterrupt(PinA), isr, HIGH);
+  
   u8g2.clearDisplay();
   u8g2.setFont(u8g2_font_7x14_mf);
 
@@ -137,7 +145,7 @@ void setup() {
 void loop() {
   if (awake) {
     if ((!digitalRead(EncoderButton))) {
-      virtualPosition = 50;
+      //virtualPosition = 50;
       buttonTimer = millis();
       while (!digitalRead(EncoderButton))
         buttonTimer2 = millis();
@@ -184,8 +192,8 @@ void loop() {
         }
     } else {
       if (startSleep) {
-      countdown = interval;
-      startSleep = false;
+        countdown = interval;
+        startSleep = false;
       }
     
       if (countdown > 0) {
@@ -202,7 +210,7 @@ void loop() {
         output = "00";
         countdown = interval;
         updateScreen();
-        sleepCycle();
+        //sleepCycle();
         trigger();
       }
     }
