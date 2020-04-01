@@ -1,6 +1,7 @@
 #include <U8g2lib.h>
 #include <OneWire.h>
 #include <TimerOne.h>
+#include <Queue.h>
 
 #define Trigger 8
 
@@ -26,6 +27,7 @@ String output = "";
 String lastFrame = "";
 boolean startSleep = false;
 unsigned long interruptTime, lastInterruptTime;
+short increment;
 
 U8G2_SH1106_128X64_NONAME_1_4W_HW_SPI u8g2(U8G2_R2, /* cs=*/ 10, /* dc=*/ 9, /* reset=*/ 7);
 
@@ -104,24 +106,29 @@ void sleepCycle() {
   }
 }
 
-void interrupt() {
-  lastInterruptTime = 0;
-  interruptTime = millis();
-  aState = digitalRead(PinA);
-  if (interruptTime - lastInterruptTime > 5) {
-    if (digitalRead(PinB) != aState)
-    {
-      virtualPosition++ ;
-    } else {
-      virtualPosition-- ;
+void interruptOccurred() {
+  if (increment > 0) {
+    while (increment != 0) {
+      adjustValue(true);
+      increment -= 1;
+    }
+  } else if (increment < 0) {
+    while (increment != 0) {
+      adjustValue(false);
+      increment += 1;
     }
   }
-  lastInterruptTime = interruptTime;
-  aLastState = aState;
 }
 
 void isr ()  {
-  interrupt();
+  aState = digitalRead(PinA);
+  if (digitalRead(PinB) != aState)
+    {
+      increment += 1;
+    } else {
+      increment -= 1;
+    }
+  //interrupt();
 }
 
 void setup() {
@@ -144,6 +151,9 @@ void setup() {
 
 void loop() {
   if (awake) {
+    if (increment != 0) {
+      interruptOccurred();
+    }
     if ((!digitalRead(EncoderButton))) {
       //virtualPosition = 50;
       buttonTimer = millis();
