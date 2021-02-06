@@ -133,7 +133,10 @@ void trigger() {
             lastRun = localMS;
             
             output = "T-";
-            output += triggerCountdown;
+            output += triggerCountdown / 1000;
+            output += ".";
+            output += (triggerCountdown % 1000) / 100;
+            //output += triggerCountdown;
             output += "ms";
             updateScreen(false);
         }
