@@ -5,12 +5,13 @@
 #include <avdweb_Switch.h>
 
 #define SerialOutput 0
-
 #define Trigger 8
-Switch down = Switch(3);
-Switch up = Switch(2);
-Switch change = Switch(4);
-Switch startStop = Switch(5);
+#define MenuSize 5
+Switch cycleButton = Switch(5);
+Switch selectButton = Switch(4);
+Switch downButton = Switch(3);
+Switch upButton = Switch(2);
+
 short menuCurrent = 1;
 float interval = 5; //Default
 float exposure = 0.00; //Default
@@ -20,7 +21,7 @@ String output = "";
 String lastFrame = "";
 bool awake = true;
 short refreshRate = 50;
-short refreshRateMS = 1000/refreshRate; //Floor division, gets rid of decimal point
+short refreshRateMS = 1000/refreshRate; //floor division, gets rid of decimal point
 long lastDisplayed = 0;
 U8G2_SH1106_128X64_NONAME_1_4W_HW_SPI u8g2(U8G2_R2, /* cs=*/ 10, /* dc=*/ 9, /* reset=*/ 7);
 
@@ -30,6 +31,7 @@ Menu Items:
 2: Exposure (seconds)
 3: Exposure (decisecond)
 4: Exposure (centisecond)
+5: Start
 */
 
 /*
@@ -39,13 +41,13 @@ void adjustValue(boolean increment) {
     float *pointer;
     switch (menuCurrent) {
         case 1:
-          pointer = &interval;
-          break;
+            pointer = &interval;
+            break;
         case 2:
         case 3:
         case 4:
-          pointer = &exposure;
-          break;
+            pointer = &exposure;
+            break;
     }
     if (increment) {
         switch(menuCurrent) {
@@ -102,7 +104,7 @@ void adjustValue(boolean increment) {
  */
 void physicalTrigger() {
     digitalWrite(Trigger, HIGH);
-    delay(200);
+    delay(200); //200ms
     digitalWrite(Trigger, LOW);
 }
 //bool trigger/release
@@ -119,7 +121,7 @@ void physicalTriggerBulb(bool trigger) {
  */
 void trigger() {
     if (!exposure) {
-        physicalTrigger();              //trigger 0.2 seconds
+        physicalTrigger(); //trigger 0.2 seconds
     } else {
         physicalTriggerBulb(true);
         countdownTimer1 = millis();
@@ -136,11 +138,10 @@ void trigger() {
             output += triggerCountdown / 1000;
             output += ".";
             output += (triggerCountdown % 1000) / 100;
-            //output += triggerCountdown;
-            output += "ms";
+            output += "s";
             updateScreen(false);
         }
-        output = "T-0ms";
+        output = "T-0s";
         updateScreen(true);
         
         physicalTriggerBulb(false);     //trigger release 0.01 seconds
@@ -173,14 +174,6 @@ void updateScreen(bool force) {
     }
 }
 
-String getCurrent() {
-    if(menuCurrent == 1) {
-        return (String)interval;
-    } else {
-        return (String)exposure;
-    }
-}
-
 void setup() {
     u8g2.begin();
     u8g2.setDisplayRotation(U8G2_R2);
@@ -189,6 +182,7 @@ void setup() {
     pinMode(3, INPUT_PULLUP);
     pinMode(4, INPUT_PULLUP);
     pinMode(5, INPUT_PULLUP);
+    //pinMode(6, INPUT_PULLUP);
   
     u8g2.clearDisplay();
     u8g2.setFont(u8g2_font_7x14_mf);
@@ -197,7 +191,6 @@ void setup() {
 #endif
     output = "Starting...";
     updateScreen(true);
-    //lastDisplayed = millis();
     awakeOutput(true);
 }
 
@@ -206,6 +199,8 @@ void awakeOutput(bool force) {
         output = "Interval: ";
         output += (int)interval;
         output += 's';
+    } else if (menuCurrent == 5) {
+        output = "Start";
     } else {
         output = "Exposure: ";
         output += exposure;
@@ -227,8 +222,8 @@ void awakeOutput(bool force) {
     updateScreen(force);
 }
 
-void changeAction() {
-    if(change.pushed()) {
+void cycleAction() {
+    if(cycleButton.pushed()) {
         if(menuCurrent == MenuSize) {
             menuCurrent = 1;
         } else {
@@ -239,7 +234,7 @@ void changeAction() {
 }
 
 void upAction() {
-    if(up.pushed()) {
+    if(upButton.pushed()) {
         adjustValue(true);
         
         awakeOutput(false);
@@ -248,7 +243,7 @@ void upAction() {
 }
 
 void downAction() {
-    if(down.pushed()) {
+    if(downButton.pushed()) {
         adjustValue(false);
         awakeOutput(false);
     }
@@ -262,30 +257,32 @@ void resetCountdown() {
     countdownTimer2 = millis();
 }
 
-void startStopAction() {
-    if(startStop.pushed()) {
-        awake = !awake;
-        if(!awake) {
-            resetCountdown();
-        } else {
-            awakeOutput(false);
+void selectAction() {
+    if(selectButton.pushed()) {
+        if (menuCurrent == MenuSize) {
+            awake = !awake;
+            if(!awake) {
+                resetCountdown();
+            } else {
+                awakeOutput(false);
+            }
         }
     }
 }
 
 void loop() {
     if (awake) {
-        down.poll();
-        up.poll();
-        change.poll();
-        startStop.poll();
-        changeAction();
+        downButton.poll();
+        upButton.poll();
+        cycleButton.poll();
+        selectButton.poll();
+        cycleAction();
         upAction();
         downAction();
-        startStopAction();
+        selectAction();
     } else {
-        startStop.poll();
-        startStopAction();
+        selectButton.poll();
+        selectAction();
         if (millis() - countdownTimer2 >= 1000) {
             countdown--;
             if (countdown > -1) {
