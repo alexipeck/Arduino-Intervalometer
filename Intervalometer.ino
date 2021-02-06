@@ -229,19 +229,10 @@ void awakeOutput(bool force) {
 
 void changeAction() {
     if(change.pushed()) {
-        switch (menuCurrent) {
-            case 1:
-                menuCurrent = 2;
-                break;
-            case 2:
-                menuCurrent = 3;
-                break;
-            case 3:
-                menuCurrent = 4;
-                break;
-            case 4:
-                menuCurrent = 1;
-                break;
+        if(menuCurrent == MenuSize) {
+            menuCurrent = 1;
+        } else {
+          menuCurrent++;
         }
         awakeOutput(false);
     }
